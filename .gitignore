@@ -1,1 +1,21 @@
+# Python
+*.pyc
+__pycache__/
 venv/
+
+# Django
+*.sqlite3
+*.log
+*.pot
+*.pyc
+media/
+staticfiles/
+
+# Node/React
+node_modules/
+build/
+dist/
+
+# Environment
+.env
+.env.local
