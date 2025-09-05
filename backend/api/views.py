@@ -154,9 +154,13 @@ def askdb(request):
             db = db_instance
         else:
             db = SQLDatabase(db_instance)
+
+             
         
-         
+        
         schema = db.get_table_info()
+        tables = db.get_usable_table_names()
+         
         
         question = request.data.get("question")
         if not question:
@@ -172,17 +176,25 @@ def askdb(request):
 You are a strict SQL query generator.
 
 RULES:
-- You are only allowed to generate SQL queries based on the provided schema.
-- Do not explain, format, or add any extra text. Output only the raw SQL query.
-- If the question is outside the database context or cannot be answered with SQL,
-  respond exactly with: "I don't have enough knowledge about that."
+1. Only generate valid SQL queries using the given tables and schema.
+2. Output must be ONLY the raw SQL query. No explanations, no formatting, no extra text.
+3. If the question cannot be answered using the provided schema, respond exactly with:
+   "I don't have enough knowledge about that."
+4. If no schema is provided, respond exactly with:
+   "I don't have enough data to generate SQL query."
+5. If no tables are available, respond exactly with:
+   "I don't have knowledge, please connect a proper database."
+
+Tables:
+{tables}
 
 Database Schema:
 {schema}
 
 User Question:
 {question}
-"""     
+"""
+
         response = llm.invoke(prompt_text)
         sql_query = response.content.strip()
         
@@ -227,8 +239,9 @@ def execute_db(request):
                 "data": None
             }, status=400)
 
-        sql_query = request.session.get("last_query")
-        user_question = request.session.get("last_question")
+        sql_query = request.session.pop("last_query", None)
+        user_question = request.session.pop("last_question", None)
+        request.session.save()
         if not sql_query or not user_question:
             return Response({
                 "error": True,
