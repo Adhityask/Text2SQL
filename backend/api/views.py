@@ -159,22 +159,22 @@ def askdb(request):
     doc :- User asks natural language question about their DB.
     payload: { "question": "What is the average percentage of students?" }
     """
-    try: 
-        api_key = request.session.get("api_key")
-        if not api_key:
-            return Response({
-                "error": True,
-                "status_code": 400,
-                "message": "No API key found. Please set your API key first.",
-                "data": None
-            }, status=400)
-        
+    try:  
         session_id = request.session.session_key
         if not session_id or session_id not in connections:
             return Response({
                 "error": True,
                 "status_code": 400,
                 "message": "Database not connected. Please call connect-db first.",
+                "data": None
+            }, status=400)
+        
+        api_key = request.session.get("api_key")
+        if not api_key:
+            return Response({
+                "error": True,
+                "status_code": 400,
+                "message": "No API key found. Please set your API key first.",
                 "data": None
             }, status=400)
 
