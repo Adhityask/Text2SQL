@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts import PromptTemplate
 from sqlalchemy import text
+import traceback
 
 load_dotenv()
 
@@ -108,10 +109,10 @@ def get_tables(request):
         
         
         if isinstance(db_instance, SQLDatabase):
-            tables = db_instance.get_table_names()
+            tables = db_instance.get_usable_table_names()
         else:
             sql_db = SQLDatabase(db_instance)
-            tables = sql_db.get_table_names()
+            tables = sql_db.get_usable_table_names()
 
         return Response({
             "error": False,
@@ -129,6 +130,27 @@ def get_tables(request):
         }, status=500)
 
 
+
+SMALL_TALK = {
+    # greetings
+    "hi", "hello", "hey", "yo", "hola", "namaste", "sup", "good morning",
+    "good afternoon", "good evening",
+
+    # acknowledgements
+    "ok", "okay", "k", "kk", "alright", "fine", "cool", "got it",
+    "understood", "roger", "sure", "done",
+
+    # thanks / appreciation
+    "thanks", "thank you", "thx", "ty", "thanks a lot", "thank you so much",
+    "much appreciated", "cheers",
+
+    # farewells
+    "bye", "goodbye", "see ya", "see you", "take care", "later",
+    "catch you later", "cya", "gn", "good night",
+
+    # casual filler
+    "hmm", "hmmm", "hahaha", "lol", "haha", "nice", "great", "cool beans"
+}
 @api_view(['POST'])
 def askdb(request):  
     """
@@ -145,23 +167,7 @@ def askdb(request):
                 "message": "Database not connected. Please call connect-db first.",
                 "data": None
             }, status=400)
-       
-         
-        db_instance = connections[session_id]
-        
-        
-        if isinstance(db_instance, SQLDatabase):
-            db = db_instance
-        else:
-            db = SQLDatabase(db_instance)
 
-             
-        
-        
-        schema = db.get_table_info()
-        tables = db.get_usable_table_names()
-         
-        
         question = request.data.get("question")
         if not question:
             return Response({
@@ -170,8 +176,30 @@ def askdb(request):
                 "message": "Missing question field",
                 "data": None
             }, status=400)
-        
-        
+
+        normalized = question.lower().strip()
+
+        # ---------------------------
+        # 🔹 Handle small talk
+        # ---------------------------
+        if normalized in SMALL_TALK:
+            return Response({
+                "error": False,
+                "status_code": 200,
+                "message": "Acknowledged 👍",
+                "data": None
+            }, status=200)
+
+        # ---------------------------
+        # 🔹 Normal SQL flow
+        # ---------------------------
+        db_instance = connections[session_id]
+        db = db_instance if isinstance(db_instance, SQLDatabase) else SQLDatabase(db_instance)
+
+        schema = db.get_table_info()
+        tables = db.get_usable_table_names()
+
+        # Build LLM prompt
         prompt_text = f"""
 You are a strict SQL query generator.
 
@@ -195,33 +223,37 @@ User Question:
 {question}
 """
 
-        response = llm.invoke(prompt_text)
-        sql_query = response.content.strip()
-        
+        # Call LLM
+        response_llm = llm.invoke(prompt_text)
+        sql_query = response_llm.content.strip()
+
+        # Clean code blocks
         if sql_query.startswith("```sql"):
             sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
         elif sql_query.startswith("```"):
             sql_query = sql_query.replace("```", "").strip()
-        
+
+        # Save session
         request.session["last_question"] = question
         request.session["last_query"] = sql_query
         request.session.save()
-        
+
         return Response({
             "error": False,
             "status_code": 200,
             "message": "SQL query generated successfully",
             "data": {"query": sql_query}
         }, status=200)
-    
+
     except Exception as e:
+        print("❌ ERROR in askdb:", str(e))
+        traceback.print_exc()
         return Response({
             "error": True,
             "status_code": 500,
             "message": f"Failed to process question: {str(e)}",
             "data": None
         }, status=500)
-
 
 @api_view(['POST'])
 def execute_db(request):

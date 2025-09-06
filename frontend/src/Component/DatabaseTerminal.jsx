@@ -32,37 +32,17 @@ const DatabaseTerminal = () => {
   })
   const [useConnectionString, setUseConnectionString] = useState(false)
 
-  const addMessage = (type, content, extra = {}) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        type,
-        content,
-        timestamp: new Date().toLocaleTimeString(),
-        ...extra,
-      },
-    ])
+  // Add a message to the terminal
+  const addMessage = (messageObj) => {
+    setMessages((prev) => [...prev, { timestamp: new Date().toLocaleTimeString(), ...messageObj }])
   }
 
+  // Connect to database
   const connectToDatabase = async () => {
     setConnectionStatus("connecting")
     setIsLoading(true)
 
-    let validatingTimeout, establishingTimeout
-
-    addMessage("system", "🔄 Initializing database connection...")
-
-    validatingTimeout = setTimeout(() => {
-      if (connectionStatus === "connecting") {
-        addMessage("system", "🔍 Validating credentials...")
-      }
-    }, 500)
-
-    establishingTimeout = setTimeout(() => {
-      if (connectionStatus === "connecting") {
-        addMessage("system", "🌐 Establishing secure connection...")
-      }
-    }, 1000)
+    addMessage({ type: "system", content: "🔄 Initializing database connection..." })
 
     try {
       const payload = useConnectionString
@@ -78,131 +58,133 @@ const DatabaseTerminal = () => {
 
       const response = await axios.post("http://localhost:8000/connect-db/", payload, {
         withCredentials: true,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       })
 
       setConnectionStatus("connected")
-      addMessage("success", `✅ Successfully connected to ${connectionData.database || "database"}`)
-
+      addMessage({ type: "success", content: `✅ Successfully connected to ${connectionData.database || "database"}` })
       setTimeout(() => fetchTables(), 500)
     } catch (error) {
-      clearTimeout(validatingTimeout)
-      clearTimeout(establishingTimeout)
-
       setConnectionStatus("error")
-      const errorMessage =  error.response?.data?.message || error.message || "Unknown error"
-      addMessage("error", `❌ Connection failed: ${errorMessage}`)
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
+      addMessage({ type: "error", content: `❌ Connection failed: ${errorMessage}` })
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Fetch tables
   const fetchTables = async () => {
     try {
-      addMessage("system", "📋 Fetching database schema...")
+      addMessage({ type: "system", content: "📋 Fetching database schema..." })
 
-      const response = await axios.get("http://localhost:8000/get-tables/", {
-        withCredentials: true,
-      })
-
+      const response = await axios.get("http://localhost:8000/get-tables/", { withCredentials: true })
       const data = response.data
 
       if (data.data && data.data.tables) {
         setTables(data.data.tables)
-        addMessage(
-          "success",
-          `✅ Database ready! Found ${data.data.tables.length} tables: ${data.data.tables.join(", ")}`,
-        )
-        addMessage("system", "💬 You can now ask questions about your database in natural language.")
+        addMessage({
+          type: "success",
+          content: `✅ Database ready! Found ${data.data.tables.length} tables: ${data.data.tables.join(", ")}`,
+        })
+        addMessage({ type: "system", content: "💬 You can now ask questions about your database in natural language." })
       } else {
-        addMessage("error", `❌ Failed to fetch tables: ${data.error || "Unknown error"}`)
+        addMessage({ type: "error", content: `❌ Failed to fetch tables: ${data.error || "Unknown error"}` })
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || "Unknown error"
-      addMessage("error", `❌ Failed to fetch tables: ${errorMessage}`)
+      addMessage({ type: "error", content: `❌ Failed to fetch tables: ${errorMessage}` })
     }
   }
 
+  // Ask database (handles small talk & SQL)
   const askDatabase = async (question) => {
     if (!question.trim()) return
 
     setIsLoading(true)
-    addMessage("user", `❓ ${question}`)
-    addMessage("system", "🤖 Processing your question...")
+    addMessage({ type: "user", content: `❓ ${question}` })
+    addMessage({ type: "system", content: "🤖 Processing your question..." })
 
     try {
       const response = await axios.post(
         "http://localhost:8000/ask-db/",
         { question },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+        { withCredentials: true, headers: { "Content-Type": "application/json" } }
       )
 
       const data = response.data
-      const query = data.data?.query || data.query || ""
 
+      // Small talk: no data, only message
+      if (!data.data && data.message) {
+        addMessage({ type: "system", message: data.message }) // e.g., "Acknowledged 👍"
+        setLastGeneratedQuery("")
+        return
+      }
+
+      // Normal SQL query
+      const query = data.data?.query || data.query || ""
       const isValidSQLQuery =
         query &&
         !query.toLowerCase().includes("don't have enough knowledge") &&
         !query.toLowerCase().includes("i don't know") &&
-        !query.toLowerCase().includes("cannot") &&
         (query.toLowerCase().includes("select") ||
           query.toLowerCase().includes("insert") ||
           query.toLowerCase().includes("update") ||
           query.toLowerCase().includes("delete") ||
           query.toLowerCase().includes("create") ||
           query.toLowerCase().includes("alter") ||
-          query.toLowerCase().includes("drop"))
+          query.toLowerCase().includes("drop")||
+          query.toLowerCase().includes("show") ||       // ✅ added
+          query.toLowerCase().includes("describe") ||   // ✅ optional
+          query.toLowerCase().includes("explain")       // ✅ optional
+        )
+         
+
 
       setLastGeneratedQuery(isValidSQLQuery ? query : "")
-      addMessage("sql", `📝 Generated SQL Query:\n${query}`, {
+      addMessage({
+        type: "sql",
+        content: `📝 Generated SQL Query:\n${query}`,
         explanation: data.explanation,
         canExecute: isValidSQLQuery,
         query: query,
       })
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || "Unknown error"
-      addMessage("error", `❌ Failed to generate query: ${errorMessage}`)
+      addMessage({ type: "error", content: `❌ Failed to generate query: ${errorMessage}` })
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Execute last generated query
   const executeQuery = async () => {
     if (!lastGeneratedQuery) return
 
     setIsLoading(true)
-    addMessage("system", "⚡ Executing SQL query...")
+    addMessage({ type: "system", content: "⚡ Executing SQL query..." })
 
     try {
       const response = await axios.post(
         "http://localhost:8000/execute-db/",
         {},
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+        { withCredentials: true, headers: { "Content-Type": "application/json" } }
       )
 
-      addMessage("result", `📊 ${response.data.result || "Query executed successfully"}`, {
+      addMessage({
+        type: "result",
+        content: `📊 ${response.data.result || "Query executed successfully"}`,
         data: response.data.data,
       })
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || "Unknown error"
-      addMessage("error", `❌ Execution failed: ${errorMessage}`)
+      addMessage({ type: "error", content: `❌ Execution failed: ${errorMessage}` })
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Input handlers
   const handleInputSubmit = () => {
     if (currentInput.trim() && !isLoading) {
       askDatabase(currentInput.trim())
@@ -267,5 +249,3 @@ const DatabaseTerminal = () => {
 }
 
 export default DatabaseTerminal
-
-
