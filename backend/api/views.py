@@ -11,7 +11,8 @@ import traceback
 
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+def get_llm(api_key):
+    return ChatGoogleGenerativeAI(model="gemini-2.0-flash", google_api_key=api_key)
 
 connections = {}   # key = session_id, value = db_instance
 
@@ -158,7 +159,16 @@ def askdb(request):
     doc :- User asks natural language question about their DB.
     payload: { "question": "What is the average percentage of students?" }
     """
-    try:
+    try: 
+        api_key = request.session.get("api_key")
+        if not api_key:
+            return Response({
+                "error": True,
+                "status_code": 400,
+                "message": "No API key found. Please set your API key first.",
+                "data": None
+            }, status=400)
+        
         session_id = request.session.session_key
         if not session_id or session_id not in connections:
             return Response({
@@ -224,6 +234,7 @@ User Question:
 """
 
         # Call LLM
+        llm = get_llm(api_key)
         response_llm = llm.invoke(prompt_text)
         sql_query = response_llm.content.strip()
 
@@ -262,12 +273,23 @@ def execute_db(request):
     doc :- Execute the last generated SQL query and return results in natural language.
     """
     try:
+         
+        
         session_id = request.session.session_key
         if not session_id or session_id not in connections:
             return Response({
                 "error": True,
                 "status_code": 400,
                 "message": "Database not connected. Please call connect-db first.",
+                "data": None
+            }, status=400)
+        
+        api_key = request.session.get("api_key")
+        if not api_key:
+            return Response({
+                "error": True,
+                "status_code": 400,
+                "message": "No API key found. Please set your API key first.",
                 "data": None
             }, status=400)
 
@@ -316,6 +338,7 @@ Instructions:
 
 Now give the explanation:
 """
+        llm = get_llm(api_key)
         response = llm.invoke(nl_prompt)
         answer = response.content.strip()
 
@@ -336,3 +359,29 @@ Now give the explanation:
             "message": f"Failed to execute query: {str(e)}",
             "data": None
         }, status=500)
+
+@api_view(['POST'])
+def set_api_key(request):
+    """
+    url:- set-api-key/
+    doc :- Store user's Google API key in session.
+    payload: { "api_key": "your_google_api_key" }
+    """
+    api_key = request.data.get("api_key")
+    if not api_key:
+        return Response({
+            "error": True,
+            "status_code": 400,
+            "message": "Missing API key",
+            "data": None
+        }, status=400)
+
+    request.session["api_key"] = api_key
+    request.session.save()
+
+    return Response({
+        "error": False,
+        "status_code": 200,
+        "message": "API key stored successfully",
+        "data": {}
+    }, status=200)

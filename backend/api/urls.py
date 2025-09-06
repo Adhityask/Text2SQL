@@ -21,5 +21,6 @@ urlpatterns = [
    path('connect-db/' , connect_db , name='connect-db'),
    path('get-tables/' , get_tables , name='get-tables'),
    path('ask-db/' , askdb , name='ask-db'),
-   path('execute-db/' , execute_db , name='execute-db')
+   path('execute-db/' , execute_db , name='execute-db'),
+   path('set-api-key/', set_api_key , name='set-api-key')
 ]
