@@ -1,8 +1,10 @@
-import Header from "./Component/Header";
-import Text2SQLApp from "./Component/Text2SQLApp";
+import DatabaseTerminal from "./Component/DatabaseTerminal";
+
+
 
 function App() {
-  return<><Text2SQLApp/></>
+  return<><DatabaseTerminal/></>
 }
+
 
 export default App;
