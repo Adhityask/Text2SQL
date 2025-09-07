@@ -231,6 +231,9 @@ RULES:
 7. You can generate SQL queries for CREATE TABLE, ALTER TABLE, DELETE, DROP, and other SQL operations only if the user explicitly asks.
 8. You can generate any valid SQL query, but you must never output anything other than raw SQL.
 9. Always see The schema while Generating any sql query create query according to schmea not user query
+10.Always generate insert cmd like this INSERT INTO products (productid, product_name, category) VALUES (1, 'A', 'Electronics');
+INSERT INTO products (productid, product_name, category) VALUES (2, 'B', 'Clothing');
+INSERT INTO products (productid, product_name, category) VALUES (3, 'C', 'Home Goods');
 Tables:
 {tables}
 
