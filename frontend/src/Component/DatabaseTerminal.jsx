@@ -129,7 +129,7 @@ const DatabaseTerminal = () => {
         addMessage({ type: "error", content: `❌ Failed to fetch tables: ${data.error || "Unknown error"}` })
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error"
       addMessage({ type: "error", content: `❌ Failed to fetch tables: ${errorMessage}` })
     }
   }
@@ -139,8 +139,8 @@ const DatabaseTerminal = () => {
     if (!question.trim()) return
 
     setIsLoading(true)
-    addMessage({ type: "user", content: `❓ ${question}` })
-    addMessage({ type: "system", content: "🤖 Processing your question..." })
+    addMessage({ type: "user", content: question })
+    addMessage({ type: "system", content: "Processing your question..." })
 
     try {
       const response = await axios.post(
@@ -153,7 +153,7 @@ const DatabaseTerminal = () => {
 
       // Small talk: no data, only message
       if (!data.data && data.message) {
-        addMessage({ type: "system", message: data.message }) // e.g., "Acknowledged 👍"
+        addMessage({ type: "assistant", content: data.message })
         setLastGeneratedQuery("")
         return
       }
@@ -178,14 +178,22 @@ const DatabaseTerminal = () => {
       setLastGeneratedQuery(isValidSQLQuery ? query : "")
       addMessage({
         type: "sql",
-        content: `🔍 Generated SQL Query:\n${query}`,
+        content: `Generated SQL Query:\n${query}`,
         explanation: data.explanation,
         canExecute: isValidSQLQuery,
         query: query,
       })
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
-      addMessage({ type: "error", content: `❌ Failed to generate query: ${errorMessage}` })
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Unknown error"
+      
+      // Check if it's an API key error
+      if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("no api key")) {
+        addMessage({ type: "error", content: `❌ API Key Error: ${errorMessage}` })
+        addMessage({ type: "warning", content: "⚠️ Please check your API key and set it again if needed." })
+        setApiKeyStatus("error")
+      } else {
+        addMessage({ type: "error", content: `❌ Failed to generate query: ${errorMessage}` })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -196,7 +204,7 @@ const DatabaseTerminal = () => {
     if (!lastGeneratedQuery) return
 
     setIsLoading(true)
-    addMessage({ type: "system", content: "⚡ Executing SQL query..." })
+    addMessage({ type: "system", content: "Executing SQL query..." })
 
     try {
       const response = await axios.post(
@@ -205,14 +213,33 @@ const DatabaseTerminal = () => {
         { withCredentials: true, headers: { "Content-Type": "application/json" } }
       )
 
-      addMessage({
-        type: "result",
-        content: `📊 ${response.data.result || "Query executed successfully"}`,
-        data: response.data.data,
-      })
+      const data = response.data
+      
+      // Handle the response properly
+      if (data.data && data.data.nl_answer) {
+        addMessage({
+          type: "result",
+          content: data.data.nl_answer,
+          data: data.data,
+        })
+      } else {
+        addMessage({
+          type: "result",
+          content: `Query executed successfully`,
+          data: data.data,
+        })
+      }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
-      addMessage({ type: "error", content: `❌ Execution failed: ${errorMessage}` })
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Unknown error"
+      
+      // Check if it's an API key error during execution
+      if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("no api key")) {
+        addMessage({ type: "error", content: `❌ API Key Error: ${errorMessage}` })
+        addMessage({ type: "warning", content: "⚠️ Your API key might be invalid. Please reset and set a valid API key." })
+        setApiKeyStatus("error")
+      } else {
+        addMessage({ type: "error", content: `❌ Execution failed: ${errorMessage}` })
+      }
     } finally {
       setIsLoading(false)
     }

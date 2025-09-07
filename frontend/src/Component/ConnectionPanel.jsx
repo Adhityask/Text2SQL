@@ -24,7 +24,7 @@ export const ConnectionPanel = ({
           {/* API Key Section */}
           <div className="space-y-3 p-4 bg-black border border-green-600 rounded">
             <h3 className="text-sm font-semibold text-green-300">🔑 API Configuration</h3>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="password"
                 placeholder="Enter your Google API Key"
@@ -35,14 +35,14 @@ export const ConnectionPanel = ({
               <button
                 onClick={onSetApiKey}
                 disabled={!connectionData.api_key.trim() || apiKeyStatus === "connected"}
-                className={`px-4 py-3 rounded font-semibold flex items-center gap-2 transition-colors ${
+                className={`px-4 py-3 rounded font-semibold flex items-center justify-center gap-2 transition-colors ${
                   apiKeyStatus === "connected"
                     ? "bg-green-600 cursor-default"
                     : "bg-green-700 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed"
                 }`}
               >
                 <Key size={18} />
-                {apiKeyStatus === "connected" ? "Connected" : "Set Key"}
+                <span className="whitespace-nowrap">{apiKeyStatus === "connected" ? "Connected" : "Set Key"}</span>
               </button>
             </div>
             {apiKeyStatus === "connected" && (
