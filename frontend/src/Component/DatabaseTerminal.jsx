@@ -129,7 +129,7 @@ const DatabaseTerminal = () => {
         addMessage({ type: "error", content: `❌ Failed to fetch tables: ${data.error || "Unknown error"}` })
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || "Unknown error"
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
       addMessage({ type: "error", content: `❌ Failed to fetch tables: ${errorMessage}` })
     }
   }
@@ -184,7 +184,7 @@ const DatabaseTerminal = () => {
         query: query,
       })
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || "Unknown error"
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
       addMessage({ type: "error", content: `❌ Failed to generate query: ${errorMessage}` })
     } finally {
       setIsLoading(false)
@@ -211,7 +211,7 @@ const DatabaseTerminal = () => {
         data: response.data.data,
       })
     } catch (error) {
-      const errorMessage = error.response?.data?.error || error.message || "Unknown error"
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
       addMessage({ type: "error", content: `❌ Execution failed: ${errorMessage}` })
     } finally {
       setIsLoading(false)

@@ -168,6 +168,7 @@ export const ConnectionPanel = ({
               <li>• Ask questions in natural language</li>
               <li>• Generate and execute SQL queries</li>
               <li>• Get results in natural language</li>
+              <li>• Always give proper prompts for better results</li>
             </ul>
           </div>
           
