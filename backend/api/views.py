@@ -152,6 +152,7 @@ SMALL_TALK = {
     # casual filler
     "hmm", "hmmm", "hahaha", "lol", "haha", "nice", "great", "cool beans"
 }
+
 @api_view(['POST'])
 def askdb(request):  
     """
@@ -159,22 +160,22 @@ def askdb(request):
     doc :- User asks natural language question about their DB.
     payload: { "question": "What is the average percentage of students?" }
     """
-    try: 
-        api_key = request.session.get("api_key")
-        if not api_key:
-            return Response({
-                "error": True,
-                "status_code": 400,
-                "message": "No API key found. Please set your API key first.",
-                "data": None
-            }, status=400)
-        
+    try:  
         session_id = request.session.session_key
         if not session_id or session_id not in connections:
             return Response({
                 "error": True,
                 "status_code": 400,
                 "message": "Database not connected. Please call connect-db first.",
+                "data": None
+            }, status=400)
+        
+        api_key = request.session.get("api_key")
+        if not api_key:
+            return Response({
+                "error": True,
+                "status_code": 400,
+                "message": "No API key found. Please set your API key first.",
                 "data": None
             }, status=400)
 
@@ -206,10 +207,12 @@ def askdb(request):
         db_instance = connections[session_id]
         db = db_instance if isinstance(db_instance, SQLDatabase) else SQLDatabase(db_instance)
 
+         
+        db._get_sample_rows = lambda table_name: ""
         schema = db.get_table_info()
         tables = db.get_usable_table_names()
 
-        # Build LLM prompt
+        print(schema)
         prompt_text = f"""
 You are a strict SQL query generator.
 
@@ -222,7 +225,12 @@ RULES:
    "I don't have enough data to generate SQL query."
 5. If no tables are available, respond exactly with:
    "I don't have knowledge, please connect a proper database."
-
+6. If the user asks for an INSERT query, you must generate a valid INSERT SQL query for that table.
+   - If the user provides values, use them.
+   - If values are not provided, create a dummy INSERT query with realistic sample data only if user say.
+7. You can generate SQL queries for CREATE TABLE, ALTER TABLE, DELETE, DROP, and other SQL operations only if the user explicitly asks.
+8. You can generate any valid SQL query, but you must never output anything other than raw SQL.
+9. Always see The schema while Generating any sql query create query according to schmea not user query
 Tables:
 {tables}
 
@@ -232,19 +240,18 @@ Database Schema:
 User Question:
 {question}
 """
-
-        # Call LLM
+        
         llm = get_llm(api_key)
         response_llm = llm.invoke(prompt_text)
         sql_query = response_llm.content.strip()
 
-        # Clean code blocks
+        
         if sql_query.startswith("```sql"):
             sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
         elif sql_query.startswith("```"):
             sql_query = sql_query.replace("```", "").strip()
 
-        # Save session
+        
         request.session["last_question"] = question
         request.session["last_query"] = sql_query
         request.session.save()
@@ -265,6 +272,7 @@ User Question:
             "message": f"Failed to process question: {str(e)}",
             "data": None
         }, status=500)
+
 
 @api_view(['POST'])
 def execute_db(request):
@@ -314,8 +322,16 @@ def execute_db(request):
             
         with engine.connect() as conn:
             result = conn.execute(text(sql_query))
-            rows = result.fetchall()
-            columns = result.keys()
+            if sql_query.strip().lower().startswith(("select", "show", "desc", "describe", "explain")):
+                rows = result.fetchall()
+                columns = result.keys()
+                data = [dict(zip(columns, row)) for row in rows]
+            else:
+                conn.commit()  # commit for INSERT/UPDATE/DELETE
+                data = None
+                rows = []       
+                columns = []    
+                 
 
         data = [dict(zip(columns, row)) for row in rows]
                 
