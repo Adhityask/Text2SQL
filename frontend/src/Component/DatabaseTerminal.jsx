@@ -8,11 +8,12 @@ import { InputArea } from "./InputArea"
 
 const DatabaseTerminal = () => {
   const [connectionStatus, setConnectionStatus] = useState("disconnected")
+  const [apiKeyStatus, setApiKeyStatus] = useState("disconnected") // New state for API key
   const [tables, setTables] = useState([])
   const [messages, setMessages] = useState([
     {
       type: "system",
-      content: "Database Terminal initialized. Please connect to your database.",
+      content: "Database Terminal initialized. Please connect to your database and set your API key.",
       timestamp: new Date().toLocaleTimeString(),
     },
   ])
@@ -29,6 +30,7 @@ const DatabaseTerminal = () => {
     password: "",
     database: "",
     connection_string: "",
+    api_key: "", // Added API key field
   })
   const [useConnectionString, setUseConnectionString] = useState(false)
 
@@ -37,8 +39,43 @@ const DatabaseTerminal = () => {
     setMessages((prev) => [...prev, { timestamp: new Date().toLocaleTimeString(), ...messageObj }])
   }
 
+  // Set API Key
+  const setApiKey = async () => {
+    if (!connectionData.api_key.trim()) {
+      addMessage({ type: "error", content: "❌ Please enter a valid API key" })
+      return
+    }
+
+    setApiKeyStatus("connecting")
+    addMessage({ type: "system", content: "🔑 Setting API key..." })
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/set-api-key/",
+        { api_key: connectionData.api_key },
+        {
+          withCredentials: true,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+
+      setApiKeyStatus("connected")
+      addMessage({ type: "success", content: "✅ API key set successfully" })
+    } catch (error) {
+      setApiKeyStatus("error")
+      const errorMessage = error.response?.data?.message || error.message || "Unknown error"
+      addMessage({ type: "error", content: `❌ Failed to set API key: ${errorMessage}` })
+    }
+  }
+
   // Connect to database
   const connectToDatabase = async () => {
+    // Check if API key is set
+    if (apiKeyStatus !== "connected") {
+      addMessage({ type: "error", content: "❌ Please set your API key first" })
+      return
+    }
+
     setConnectionStatus("connecting")
     setIsLoading(true)
 
@@ -133,18 +170,15 @@ const DatabaseTerminal = () => {
           query.toLowerCase().includes("delete") ||
           query.toLowerCase().includes("create") ||
           query.toLowerCase().includes("alter") ||
-          query.toLowerCase().includes("drop")||
-          query.toLowerCase().includes("show") ||       // ✅ added
-          query.toLowerCase().includes("describe") ||   // ✅ optional
-          query.toLowerCase().includes("explain")       // ✅ optional
-        )
-         
-
+          query.toLowerCase().includes("drop") ||
+          query.toLowerCase().includes("show") ||
+          query.toLowerCase().includes("describe") ||
+          query.toLowerCase().includes("explain"))
 
       setLastGeneratedQuery(isValidSQLQuery ? query : "")
       addMessage({
         type: "sql",
-        content: `📝 Generated SQL Query:\n${query}`,
+        content: `🔍 Generated SQL Query:\n${query}`,
         explanation: data.explanation,
         canExecute: isValidSQLQuery,
         query: query,
@@ -201,15 +235,20 @@ const DatabaseTerminal = () => {
 
   const resetConnection = () => {
     setConnectionStatus("disconnected")
+    setApiKeyStatus("disconnected")
     setTables([])
     setLastGeneratedQuery("")
     setMessages([
       {
         type: "system",
-        content: "Connection reset. Please connect to your database.",
+        content: "Connection reset. Please connect to your database and set your API key.",
         timestamp: new Date().toLocaleTimeString(),
       },
     ])
+    setConnectionData({
+      ...connectionData,
+      api_key: "",
+    })
   }
 
   return (
@@ -217,18 +256,21 @@ const DatabaseTerminal = () => {
       <div className="container mx-auto p-6 max-w-6xl">
         <TerminalHeader
           connectionStatus={connectionStatus}
+          apiKeyStatus={apiKeyStatus}
           databaseName={connectionData.database}
           onResetConnection={resetConnection}
         />
 
         <ConnectionPanel
           connectionStatus={connectionStatus}
+          apiKeyStatus={apiKeyStatus}
           connectionData={connectionData}
           useConnectionString={useConnectionString}
           isLoading={isLoading}
           onConnectionDataChange={setConnectionData}
           onUseConnectionStringChange={setUseConnectionString}
           onConnect={connectToDatabase}
+          onSetApiKey={setApiKey}
         />
 
         <TablesDisplay connectionStatus={connectionStatus} tables={tables} />
@@ -237,6 +279,7 @@ const DatabaseTerminal = () => {
 
         <InputArea
           connectionStatus={connectionStatus}
+          apiKeyStatus={apiKeyStatus}
           currentInput={currentInput}
           isLoading={isLoading}
           onInputChange={setCurrentInput}

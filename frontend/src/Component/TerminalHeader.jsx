@@ -1,7 +1,7 @@
-import { Database, Loader2, CheckCircle, XCircle, Terminal } from "lucide-react"
+import { Database, Loader2, CheckCircle, XCircle, Terminal, Key } from "lucide-react"
 
-export const TerminalHeader = ({ connectionStatus, databaseName, onResetConnection }) => {
-  const getStatusIcon = () => {
+export const TerminalHeader = ({ connectionStatus, apiKeyStatus, databaseName, onResetConnection }) => {
+  const getDbStatusIcon = () => {
     switch (connectionStatus) {
       case "connecting":
         return <Loader2 className="animate-spin text-yellow-400" size={18} />
@@ -14,16 +14,42 @@ export const TerminalHeader = ({ connectionStatus, databaseName, onResetConnecti
     }
   }
 
-  const getStatusText = () => {
+  const getApiStatusIcon = () => {
+    switch (apiKeyStatus) {
+      case "connecting":
+        return <Loader2 className="animate-spin text-yellow-400" size={18} />
+      case "connected":
+        return <CheckCircle className="text-green-400" size={18} />
+      case "error":
+        return <XCircle className="text-red-400" size={18} />
+      default:
+        return <Key className="text-gray-400" size={18} />
+    }
+  }
+
+  const getDbStatusText = () => {
     switch (connectionStatus) {
       case "connecting":
         return "Connecting..."
       case "connected":
-        return `Connected to ${databaseName || "database"}`
+        return `DB: ${databaseName || "database"}`
       case "error":
-        return "Connection failed"
+        return "DB failed"
       default:
-        return "Not connected"
+        return "DB not connected"
+    }
+  }
+
+  const getApiStatusText = () => {
+    switch (apiKeyStatus) {
+      case "connecting":
+        return "Setting key..."
+      case "connected":
+        return "API connected"
+      case "error":
+        return "API failed"
+      default:
+        return "API not set"
     }
   }
 
@@ -33,12 +59,26 @@ export const TerminalHeader = ({ connectionStatus, databaseName, onResetConnecti
         <Terminal className="text-green-400" size={24} />
         <h1 className="text-xl font-bold">Database Terminal v1.0</h1>
       </div>
-      <div className="flex items-center gap-3">
-        {getStatusIcon()}
-        <span className="text-sm">{getStatusText()}</span>
-        {connectionStatus === "connected" && (
+      <div className="flex items-center gap-4">
+        {/* API Key Status */}
+        <div className="flex items-center gap-2">
+          {getApiStatusIcon()}
+          <span className="text-sm">{getApiStatusText()}</span>
+        </div>
+        
+        {/* Separator */}
+        <span className="text-gray-600">|</span>
+        
+        {/* Database Status */}
+        <div className="flex items-center gap-2">
+          {getDbStatusIcon()}
+          <span className="text-sm">{getDbStatusText()}</span>
+        </div>
+        
+        {/* Disconnect Button */}
+        {(connectionStatus === "connected" || apiKeyStatus === "connected") && (
           <button onClick={onResetConnection} className="ml-3 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-xs">
-            Disconnect
+            Reset All
           </button>
         )}
       </div>

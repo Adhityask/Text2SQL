@@ -1,5 +1,5 @@
-export const InputArea = ({ connectionStatus, currentInput, isLoading, onInputChange, onSubmit, onKeyPress }) => {
-  if (connectionStatus !== "connected") {
+export const InputArea = ({ connectionStatus, apiKeyStatus, currentInput, isLoading, onInputChange, onSubmit, onKeyPress }) => {
+  if (connectionStatus !== "connected" || apiKeyStatus !== "connected") {
     return null
   }
 

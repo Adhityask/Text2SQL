@@ -199,7 +199,7 @@ def askdb(request):
                 "message": "Acknowledged 👍",
                 "data": None
             }, status=200)
-
+    
         # ---------------------------
         # 🔹 Normal SQL flow
         # ---------------------------
