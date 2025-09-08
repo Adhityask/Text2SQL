@@ -128,11 +128,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://text2sql-llm.netlify.app/"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
-SESSION_COOKIE_SECURE = False         
-SESSION_COOKIE_SAMESITE = 'Lax'       
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = True           
+SESSION_COOKIE_SAMESITE = 'None'     
+ 
+CSRF_COOKIE_SECURE = True             
+CSRF_COOKIE_SAMESITE = 'None'  
