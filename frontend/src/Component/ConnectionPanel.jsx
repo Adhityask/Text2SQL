@@ -43,7 +43,7 @@ export const ConnectionPanel = ({
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="password"
-                placeholder="Enter your Google API Key"
+                placeholder="Enter your Gemini API Key"
                 value={connectionData.api_key}
                 onChange={(e) => onConnectionDataChange({ ...connectionData, api_key: e.target.value })}
                 className="flex-1 p-3 bg-black border border-green-600 rounded text-green-400 placeholder-green-700 focus:outline-none focus:border-green-400"
