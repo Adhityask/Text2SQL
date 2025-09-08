@@ -10,6 +10,7 @@ const DatabaseTerminal = () => {
   const [connectionStatus, setConnectionStatus] = useState("disconnected")
   const [apiKeyStatus, setApiKeyStatus] = useState("disconnected") // New state for API key
   const [tables, setTables] = useState([])
+  const [isRefreshingTables, setIsRefreshingTables] = useState(false)
   const [messages, setMessages] = useState([
     {
       type: "system",
@@ -42,7 +43,7 @@ const DatabaseTerminal = () => {
   // Set API Key
   const setApiKey = async () => {
     if (!connectionData.api_key.trim()) {
-      addMessage({ type: "error", content: "❌ Please enter a valid API key" })
+      addMessage({ type: "error", content: "⚠️ Please enter a valid API key" })
       return
     }
 
@@ -64,7 +65,7 @@ const DatabaseTerminal = () => {
     } catch (error) {
       setApiKeyStatus("error")
       const errorMessage = error.response?.data?.message || error.message || "Unknown error"
-      addMessage({ type: "error", content: `❌ Failed to set API key: ${errorMessage}` })
+      addMessage({ type: "error", content: `⚠️ Failed to set API key: ${errorMessage}` })
     }
   }
 
@@ -72,7 +73,7 @@ const DatabaseTerminal = () => {
   const connectToDatabase = async () => {
     // Check if API key is set
     if (apiKeyStatus !== "connected") {
-      addMessage({ type: "error", content: "❌ Please set your API key first" })
+      addMessage({ type: "error", content: "⚠️ Please set your API key first" })
       return
     }
 
@@ -104,7 +105,7 @@ const DatabaseTerminal = () => {
     } catch (error) {
       setConnectionStatus("error")
       const errorMessage = error.response?.data?.message || error.message || "Unknown error"
-      addMessage({ type: "error", content: `❌ Connection failed: ${errorMessage}` })
+      addMessage({ type: "error", content: `⚠️ Connection failed: ${errorMessage}` })
     } finally {
       setIsLoading(false)
     }
@@ -126,11 +127,38 @@ const DatabaseTerminal = () => {
         })
         addMessage({ type: "system", content: "💬 You can now ask questions about your database in natural language." })
       } else {
-        addMessage({ type: "error", content: `❌ Failed to fetch tables: ${data.error || "Unknown error"}` })
+        addMessage({ type: "error", content: `⚠️ Failed to fetch tables: ${data.error || "Unknown error"}` })
       }
     } catch (error) {
       const errorMessage = error.response?.data?.error || error.message || "Unknown error"
-      addMessage({ type: "error", content: `❌ Failed to fetch tables: ${errorMessage}` })
+      addMessage({ type: "error", content: `⚠️ Failed to fetch tables: ${errorMessage}` })
+    }
+  }
+
+  // Refresh tables function
+  const refreshTables = async () => {
+    if (connectionStatus !== "connected") return
+    
+    setIsRefreshingTables(true)
+    
+    try {
+      const response = await axios.get("http://localhost:8000/get-tables/", { withCredentials: true })
+      const data = response.data
+
+      if (data.data && data.data.tables) {
+        setTables(data.data.tables)
+        addMessage({
+          type: "success",
+          content: `🔄 Tables refreshed! Found ${data.data.tables.length} tables: ${data.data.tables.join(", ")}`,
+        })
+      } else {
+        addMessage({ type: "error", content: `⚠️ Failed to refresh tables: ${data.error || "Unknown error"}` })
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || "Unknown error"
+      addMessage({ type: "error", content: `⚠️ Failed to refresh tables: ${errorMessage}` })
+    } finally {
+      setIsRefreshingTables(false)
     }
   }
 
@@ -188,11 +216,11 @@ const DatabaseTerminal = () => {
       
       // Check if it's an API key error
       if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("no api key")) {
-        addMessage({ type: "error", content: `❌ API Key Error: ${errorMessage}` })
+        addMessage({ type: "error", content: `⚠️ API Key Error: ${errorMessage}` })
         addMessage({ type: "warning", content: "⚠️ Please check your API key and set it again if needed." })
         setApiKeyStatus("error")
       } else {
-        addMessage({ type: "error", content: `❌ Failed to generate query: ${errorMessage}` })
+        addMessage({ type: "error", content: `⚠️ Failed to generate query: ${errorMessage}` })
       }
     } finally {
       setIsLoading(false)
@@ -229,16 +257,26 @@ const DatabaseTerminal = () => {
           data: data.data,
         })
       }
+
+      // Check if it's a CREATE, ALTER, or DROP operation that might affect table structure
+      const queryLower = lastGeneratedQuery.toLowerCase().trim()
+      if (queryLower.includes("create table") || 
+          queryLower.includes("drop table") || 
+          queryLower.includes("alter table") ||
+          queryLower.includes("rename table")) {
+        // Auto-refresh tables after structural changes with a longer delay to ensure DB commits
+        setTimeout(() => refreshTables(), 1500)
+      }
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Unknown error"
       
       // Check if it's an API key error during execution
       if (errorMessage.toLowerCase().includes("api key") || errorMessage.toLowerCase().includes("no api key")) {
-        addMessage({ type: "error", content: `❌ API Key Error: ${errorMessage}` })
+        addMessage({ type: "error", content: `⚠️ API Key Error: ${errorMessage}` })
         addMessage({ type: "warning", content: "⚠️ Your API key might be invalid. Please reset and set a valid API key." })
         setApiKeyStatus("error")
       } else {
-        addMessage({ type: "error", content: `❌ Execution failed: ${errorMessage}` })
+        addMessage({ type: "error", content: `⚠️ Execution failed: ${errorMessage}` })
       }
     } finally {
       setIsLoading(false)
@@ -300,7 +338,12 @@ const DatabaseTerminal = () => {
           onSetApiKey={setApiKey}
         />
 
-        <TablesDisplay connectionStatus={connectionStatus} tables={tables} />
+        <TablesDisplay 
+          connectionStatus={connectionStatus} 
+          tables={tables} 
+          onRefreshTables={refreshTables}
+          isRefreshing={isRefreshingTables}
+        />
 
         <TerminalOutput messages={messages} isLoading={isLoading} onExecuteQuery={executeQuery} />
 

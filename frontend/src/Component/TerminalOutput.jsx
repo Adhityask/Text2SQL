@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react"
-import { Play, Loader2, Bot, User, AlertCircle, CheckCircle2, Terminal, Database, AlertTriangle, Sparkles } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { Play, Loader2, Bot, User, AlertCircle, CheckCircle2, Terminal, Database, AlertTriangle, Sparkles, Copy, Check } from "lucide-react"
 
 export const TerminalOutput = ({ messages, isLoading, onExecuteQuery }) => {
   const messagesEndRef = useRef(null)
+  const [copiedMessageId, setCopiedMessageId] = useState(null)
 
   // Scroll to bottom when messages update
   const scrollToBottom = () => {
@@ -12,6 +13,17 @@ export const TerminalOutput = ({ messages, isLoading, onExecuteQuery }) => {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Copy JSON data to clipboard
+  const copyToClipboard = async (data, messageIndex) => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      setCopiedMessageId(messageIndex)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy: ', err)
+    }
+  }
 
   // Get icon for message type
   const getMessageIcon = (type) => {
@@ -96,7 +108,26 @@ export const TerminalOutput = ({ messages, isLoading, onExecuteQuery }) => {
               {/* Query results with raw data */}
               {message.type === "result" && message.data && message.data.rows && (
                 <div className="mt-2 p-3 bg-gray-800 border border-gray-600 rounded text-xs">
-                  <div className="text-gray-400 mb-2">📊 Raw Data:</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-gray-400">📊 Raw Data:</div>
+                    <button
+                      onClick={() => copyToClipboard(message.data.rows, index)}
+                      className="flex items-center gap-1 px-2 py-1 bg-blue-700 hover:bg-blue-600 rounded text-xs font-semibold transition-colors"
+                      title="Copy JSON data"
+                    >
+                      {copiedMessageId === index ? (
+                        <>
+                          <Check size={12} />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={12} />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <pre className="text-green-300 whitespace-pre-wrap overflow-x-auto">
                     {JSON.stringify(message.data.rows, null, 2)}
                   </pre>

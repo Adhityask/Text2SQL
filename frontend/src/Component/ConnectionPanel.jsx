@@ -15,6 +15,22 @@ export const ConnectionPanel = ({
     return null
   }
 
+  // Check if all connection fields are filled
+  const isConnectionFormValid = () => {
+    if (useConnectionString) {
+      return connectionData.connection_string.trim() !== ""
+    } else {
+      return (
+        connectionData.db_type.trim() !== "" &&
+        connectionData.host.trim() !== "" &&
+        connectionData.port.trim() !== "" &&
+        connectionData.user.trim() !== "" &&
+        connectionData.password.trim() !== "" &&
+        connectionData.database.trim() !== ""
+      )
+    }
+  }
+
   return (
     <div className="bg-gray-900 border-l border-r border-green-500 p-6">
       <h2 className="text-lg mb-4 text-green-300">🔗 Database Connection</h2>
@@ -138,7 +154,7 @@ export const ConnectionPanel = ({
 
             <button
               onClick={onConnect}
-              disabled={isLoading || apiKeyStatus !== "connected"}
+              disabled={isLoading || apiKeyStatus !== "connected" || !isConnectionFormValid()}
               className="w-full p-3 bg-green-700 hover:bg-green-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               {isLoading ? (
@@ -155,6 +171,9 @@ export const ConnectionPanel = ({
             </button>
             {apiKeyStatus !== "connected" && (
               <p className="text-xs text-yellow-400">⚠️ Please set your API key first</p>
+            )}
+            {apiKeyStatus === "connected" && !isConnectionFormValid() && (
+              <p className="text-xs text-yellow-400">⚠️ Please fill all connection fields</p>
             )}
           </div>
         </div>
@@ -173,7 +192,7 @@ export const ConnectionPanel = ({
           </div>
           
           <div className="space-y-2">
-            <h3 className="font-semibold">🔐 Setup Steps:</h3>
+            <h3 className="font-semibold">📝 Setup Steps:</h3>
             <ol className="space-y-1 text-green-400 list-decimal list-inside">
               <li>Enter your Google API key</li>
               <li>Configure database connection</li>

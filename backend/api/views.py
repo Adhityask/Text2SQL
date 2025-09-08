@@ -6,7 +6,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv 
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts import PromptTemplate
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 import traceback
 
 load_dotenv()
@@ -105,15 +105,17 @@ def get_tables(request):
                 "data": None
             }, status=400)
 
-         
         db_instance = connections[session_id]
         
-        
+        # Force fresh table lookup by using SQLAlchemy inspector directly
         if isinstance(db_instance, SQLDatabase):
-            tables = db_instance.get_usable_table_names()
+            # Use the engine from SQLDatabase and create fresh inspector
+            inspector = inspect(db_instance._engine)
+            tables = inspector.get_table_names()
         else:
-            sql_db = SQLDatabase(db_instance)
-            tables = sql_db.get_usable_table_names()
+            # Create fresh inspector from engine
+            inspector = inspect(db_instance)
+            tables = inspector.get_table_names()
 
         return Response({
             "error": False,
@@ -191,23 +193,28 @@ def askdb(request):
         normalized = question.lower().strip()
 
         # ---------------------------
-        # 🔹 Handle small talk
+        # Handle small talk
         # ---------------------------
         if normalized in SMALL_TALK:
             return Response({
                 "error": False,
                 "status_code": 200,
-                "message": "Acknowledged 👍",
+                "message": "Acknowledged",
                 "data": None
             }, status=200)
     
         # ---------------------------
-        # 🔹 Normal SQL flow
+        # Normal SQL flow
         # ---------------------------
         db_instance = connections[session_id]
-        db = db_instance if isinstance(db_instance, SQLDatabase) else SQLDatabase(db_instance)
+        
+        # Create a fresh SQLDatabase instance to ensure latest schema
+        if isinstance(db_instance, SQLDatabase):
+            db = SQLDatabase(db_instance._engine)
+        else:
+            db = SQLDatabase(db_instance)
 
-         
+        # Force refresh of table info by creating new instance
         db._get_sample_rows = lambda table_name: ""
         schema = db.get_table_info()
         tables = db.get_usable_table_names()
@@ -324,7 +331,7 @@ User Question:
         }, status=200)
 
     except Exception as e:
-        print("❌ ERROR in askdb:", str(e))
+        print("ERROR in askdb:", str(e))
         traceback.print_exc()
         return Response({
             "error": True,

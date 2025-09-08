@@ -1,4 +1,4 @@
-import { Database, Loader2, CheckCircle, XCircle, Terminal, Key } from "lucide-react"
+import { Database, Loader2, CheckCircle, XCircle, Brain, Key } from "lucide-react"
 
 export const TerminalHeader = ({ connectionStatus, apiKeyStatus, databaseName, onResetConnection }) => {
   const getDbStatusIcon = () => {
@@ -56,8 +56,8 @@ export const TerminalHeader = ({ connectionStatus, apiKeyStatus, databaseName, o
   return (
     <div className="bg-gray-900 border border-green-500 rounded-t-lg p-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Terminal className="text-green-400" size={24} />
-        <h1 className="text-xl font-bold">Database Terminal v1.0</h1>
+        <Brain className="text-green-400" size={24} />
+        <h1 className="text-xl font-bold">Text2SQL v1.0</h1>
       </div>
       <div className="flex items-center gap-4">
         {/* API Key Status */}
