@@ -134,9 +134,9 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 
-# SESSION_COOKIE_SECURE = True          # uncomment when hosting on HTTPS
-# SESSION_COOKIE_SAMESITE = 'None'      # uncomment when hosting on HTTPS
+SESSION_COOKIE_SECURE = True          # comment when  using on localhost
+SESSION_COOKIE_SAMESITE = 'None'      # comment when using on  localhost 
 
-# CSRF_COOKIE_SECURE = True             # uncomment when hosting on HTTPS
-# CSRF_COOKIE_SAMESITE = 'None'         # uncomment when hosting on HTTPS
+CSRF_COOKIE_SECURE = True             # comment when using on  localhost 
+CSRF_COOKIE_SAMESITE = 'None'         # comment when using on  localhost 
 
