@@ -133,8 +133,10 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-SESSION_COOKIE_SECURE = True           
-SESSION_COOKIE_SAMESITE = 'None'     
- 
-CSRF_COOKIE_SECURE = True             
-CSRF_COOKIE_SAMESITE = 'None'  
+
+# SESSION_COOKIE_SECURE = True          # uncomment when hosting on HTTPS
+# SESSION_COOKIE_SAMESITE = 'None'      # uncomment when hosting on HTTPS
+
+# CSRF_COOKIE_SECURE = True             # uncomment when hosting on HTTPS
+# CSRF_COOKIE_SAMESITE = 'None'         # uncomment when hosting on HTTPS
+
