@@ -128,7 +128,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://text2sql-llm.netlify.app/"
+    "https://text2sql-llm.netlify.app"
 ]
 
 CORS_ALLOW_CREDENTIALS = True
