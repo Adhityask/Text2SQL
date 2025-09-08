@@ -21,5 +21,4 @@ COPY . /app
 
 EXPOSE 8000
 
-# Start Django with Gunicorn
-CMD ["gunicorn", "text2sql.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "text2sql.wsgi:application", "--bind", "0.0.0.0:$PORT"]
